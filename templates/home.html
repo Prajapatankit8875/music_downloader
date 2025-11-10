@@ -4,15 +4,38 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Music Explorer</title>
-    <link rel="stylesheet" href="static/css/style.css">
+    <title>Music Downloader</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
 </head>
 
 <body>
 
     <header>
-        <h1>🎶 Music Explorer</h1>
-        <p>Discover and play your favorite songs</p>
+        <h1>🎵 Welcome to the Music Downloader</h1>
+                <meta name="description" content="">
+                <meta name="viewport" content="width=device-width, initial-scale=1">
+                <link rel="stylesheet" href="">
+            </head>
+            <body>
+                <!--[if lt IE 7]>
+                    <p class="browsehappy">You are using an <strong>outdated</strong> browser. Please <a href="#">upgrade your browser</a> to improve your experience.</p>
+                <![endif]-->
+                
+                <script src="" async defer></script>
+            </body>
+        </html>
+                <meta name="description" content="">
+                <meta name="viewport" content="width=device-width, initial-scale=1">
+                <link rel="stylesheet" href="">
+            </head>
+            <body>
+                <!--[if lt IE 7]>
+                    <p class="browsehappy">You are using an <strong>outdated</strong> browser. Please <a href="#">upgrade your browser</a> to improve your experience.</p>
+                <![endif]-->
+                
+                <script src="" async defer></script>
+            </body>
+         </html>
     </header>
 
     <main>
@@ -25,55 +48,143 @@
             {% for song in songs %}
             <div class="song-card">
 
-                <div class="image-area">
-                    <img class="song-image" src="{{ song['image'][1]['url'] }}" alt="Song Art">
+                <div class="image-download-area">
+                    <img src="{{ song['image'][1]['url'] }}" alt="Song Art" class="album-art">
                 </div>
 
                 <div class="song-details">
                     <h2>{{ song['name'] }}</h2>
-                    <p>by <strong>{{ song['artists']['primary'][0]['name'] }}</strong></p>
-                    <p>⏱ {{ (song['duration'] // 60)|int }}:{{ '%02d' % (song['duration'] % 60) }}</p>
-                    <audio src="{{ song['downloadUrl'][-1]['url'] }}" controls></audio>
+                    <p>by {{ song['artists']['primary'][0]['name'] }}</p>
+                    <p class="duration" data-seconds="{{ song['duration'] }}"></p>
+
+                    <div class="audio-center">
+                        <audio src="{{ song['downloadUrl'][-1]['url'] }}" controls></audio>
+                    </div>
                 </div>
             </div>
             {% endfor %}
         </div>
     </main>
 
-    <footer>
-        <p>🎧 Made with ❤️ for music lovers</p>
-    </footer>
+<!-- 🎧 Bottom Now Playing Bar -->
+<div id="nowPlayingBar" class="hidden">
+    <img id="npImage" src="" alt="Album Art">
+    <div class="np-info">
+        <h3 id="npName">Song Name</h3>
+        <p id="npArtist">Artist Name</p>
+        <input type="range" id="npProgress" value="0" min="0" max="100">
+    </div>
+    <div class="np-controls">
+        <button id="prevBtn">⏮</button>
+        <button id="playPauseBtn">⏸</button>
+        <button id="nextBtn">⏭</button>
+    </div>
+</div>
 
-    <!-- 🎶 JavaScript to handle play/pause & single playback -->
-    <script>
-        const allCards = document.querySelectorAll(".song-card");
+<script>
+    // Format duration
+    function formatDuration(seconds) {
+        const min = Math.floor(seconds / 60);
+        const sec = Math.floor(seconds % 60);
+        return `${min}:${sec.toString().padStart(2, '0')}`;
+    }
+    document.querySelectorAll('.duration').forEach(el => {
+        const seconds = parseInt(el.dataset.seconds, 10);
+        el.textContent = formatDuration(seconds);
+    });
 
-        allCards.forEach(card => {
-            const audio = card.querySelector("audio");
-            const img = card.querySelector(".song-image");
+    const audios = document.querySelectorAll("audio");
+    const images = document.querySelectorAll(".album-art");
 
-            // When a song starts playing
-            audio.addEventListener("play", () => {
-                // Pause all other audios
-                allCards.forEach(otherCard => {
-                    const otherAudio = otherCard.querySelector("audio");
-                    const otherImg = otherCard.querySelector(".song-image");
-                    if (otherAudio !== audio) {
-                        otherAudio.pause();
-                        otherImg.classList.remove("playing");
-                    }
-                });
+    const bar = document.getElementById("nowPlayingBar");
+    const npImage = document.getElementById("npImage");
+    const npName = document.getElementById("npName");
+    const npArtist = document.getElementById("npArtist");
+    const playPauseBtn = document.getElementById("playPauseBtn");
+    const nextBtn = document.getElementById("nextBtn");
+    const prevBtn = document.getElementById("prevBtn");
+    const npProgress = document.getElementById("npProgress");
 
-                // Start animation for this song
-                img.classList.add("playing");
+    let currentIndex = -1;
+    let progressInterval;
+
+    audios.forEach((audio, i) => {
+        audio.addEventListener("play", () => {
+            audios.forEach((a, j) => {
+                if (i !== j) {
+                    a.pause();
+                    images[j].classList.remove("spinning");
+                }
             });
+            images[i].classList.add("spinning");
+            currentIndex = i;
 
-            // When paused or ended
-            audio.addEventListener("pause", () => img.classList.remove("playing"));
-            audio.addEventListener("ended", () => img.classList.remove("playing"));
+            const card = audio.closest(".song-card");
+            const name = card.querySelector("h2").textContent;
+            const artist = card.querySelector("p").textContent;
+            const imgSrc = card.querySelector("img").src;
+
+            npName.textContent = name;
+            npArtist.textContent = artist;
+            npImage.src = imgSrc;
+            bar.classList.remove("hidden");
+            playPauseBtn.textContent = "⏸";
+
+            clearInterval(progressInterval);
+            progressInterval = setInterval(() => {
+                if (!audio.paused) {
+                    npProgress.value = (audio.currentTime / audio.duration) * 100 || 0;
+                }
+            }, 500);
         });
-    </script>
+
+        audio.addEventListener("pause", () => {
+            images[i].classList.remove("spinning");
+        });
+
+        audio.addEventListener("ended", () => {
+            clearInterval(progressInterval);
+            const next = audios[i + 1];
+            if (next) next.play();
+        });
+    });
+
+    npProgress.addEventListener("input", () => {
+        const current = audios[currentIndex];
+        if (current) {
+            current.currentTime = (npProgress.value / 100) * current.duration;
+        }
+    });
+
+    playPauseBtn.addEventListener("click", () => {
+        const current = audios[currentIndex];
+        if (!current) return;
+        if (current.paused) {
+            current.play();
+            playPauseBtn.textContent = "⏸";
+        } else {
+            current.pause();
+            playPauseBtn.textContent = "▶️";
+        }
+    });
+
+    nextBtn.addEventListener("click", () => {
+        if (currentIndex < audios.length - 1) {
+            audios[currentIndex].pause();
+            audios[currentIndex + 1].play();
+        }
+    });
+
+    prevBtn.addEventListener("click", () => {
+        if (currentIndex > 0) {
+            audios[currentIndex].pause();
+            audios[currentIndex - 1].play();
+        }
+    });
+</script>
+
+
+            
 
 </body>
-
 </html>

@@ -8,7 +8,7 @@ def get_songs(query):
                      params={
                          "query": query,
                          "page": "0",
-                         "limit": "20"
+                         "limit": "30"
                      })
     all_json = result.json()
     songs = all_json['data']['results']
@@ -30,6 +30,8 @@ def home():
 @app.route('/about',methods=['GET','POST'])
 def about():
     return render_template('about.html')
+
+app.run(debug = True)
 
 
 
